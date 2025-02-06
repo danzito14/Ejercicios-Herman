@@ -303,13 +303,13 @@ $miObjeto2 = New-Object -TypeName PSObject -Property @{
  $miObjeto2 | Add-Member -MemberType ScriptMethod -Name Saludar -Value {Write-Host "Hola mundo"}
  $miObjeto2 | Get-Member
 
-$miIbjeto3 = [PSCustomObject] @{
+$miObjeto3 = [PSCustomObject] @{
    Nombre = "Miguel"
    Edad = 23
 }
 
- $miObjeto2 | Add-Member -MemberType ScriptMethod -Name Saludar -Value {Write-Host "Hola mundo"}
- $miObjeto2 | Get-Member
+ $miObjeto3 | Add-Member -MemberType ScriptMethod -Name Saludar -Value {Write-Host "Hola mundo"}
+ $miObjeto3 | Get-Member
 
 Get-Process -Name Acrobat | Stop-Process
 
@@ -328,3 +328,191 @@ Get-Help  -Full Get-ChildItem
 Get-Help -Full Get-Clipboard
 
 Get-ChildItem *.txt | Get-Clipboard
+
+Get-Help -Full Stop-Service
+
+Get-Service
+
+Get-Service Soopler | Stop-Service
+
+Get-Service
+
+"Soopler" | Stop-Service
+
+Get-Service 
+Get-Service 
+
+Get-Service 
+
+$miObjeto4 = [PSCustomObject] @{
+Name = "Spooler"
+}
+
+$miObjeto4 | Stop-Service
+
+Get-Service
+Get-Service
+
+#6 funciones 
+Write-Output "Funciones ------------------------------------------------------------------------"
+
+Get-Verb
+
+function Get-Fecha 
+{
+Get-Date
+}
+
+
+Get-Fecha
+
+Get-ChildItem -Path Function:\Get-*
+
+Get-ChildItem -Path Function:\Get-Fecha | Remove-Item
+Get-ChildItem -Path Function:\Get-*
+
+function Get-Resta {
+Param ([int]$num1, [int]$num2)
+$resta = $num1-$num2
+Write-Host "La resta de los dos parametros es $resta"
+}
+
+Get-Resta 10 5
+
+Get-Resta -num2 10 -num1 5
+
+Get-Resta -num2 10
+
+function Get-Resta2 {
+Param ([Parameter(Mandatory)][int]$num1, [int]$num2)
+$resta = $num1-$num2
+Write-Host "La resta de los dos parametros es $resta"
+}
+
+Get-Resta2 -num2 10
+
+function Get-Resta3 {
+[CmdletBinding()]
+Param ([int]$num1, [int]$num2)
+$resta=$num1-$num2 #Operacion que realiza la resta
+Write-Host "La resta de los parametros es $resta" 
+}
+
+Get-Resta3
+
+(Get-Command -Name Get-Resta3).Parameters.Keys
+
+function Get-Resta4 {
+[CmdletBinding()]
+Param ([int]$num1, [int]$num2)
+$resta=$num1-$num2 #Operacion que realiza la resta
+Write-Verbose -Message "Operacion que se va a realizar es una resta de $num1  y $num2"
+Write-Host "La resta de los parametros es $resta" 
+}
+
+
+
+
+#7 MOdulos
+Write-Output "Modulos ---------------------------------------------------------------------------------"
+
+Get-Module
+
+Get-Module -ListAvailable
+
+BitsTransfer
+Get-Module
+Remove-Module BitsTransfer
+Get-Module
+
+Get-Command -Module BitsTransfer
+
+Get-Help BitsTransfer
+
+$env:PSModulePath
+
+Import-Module BitsTransfer
+Get-Module
+
+
+#8Scripts
+Write-Output "Scripts ---------------------------------------------------------"
+try
+{
+    Start-Process -Path $path -ErrorAction Stop
+}
+catch [System.IO.DirectoryNotFoundException],[System.IO.FileNotFoundException]
+{
+    Write-Output "EL directiorio o fichero no ha sido encontrado: [$path]"
+}
+catch [System.IO.IOException]
+{
+    Write-Output "Error de IO con el archivo: [$path]"
+}
+
+throw "NO se puede encontrar la ruta: [$path]"
+
+throw [System.IO.FileNotFoundException] "NO se puede encontrar la ruta: [$path]"
+
+throw [System.IO.FileNotFoundException]::new()
+
+throw [System.IO.FileNotFoundException]::new("NO se puede encontrar la ruta: [$path]")
+
+throw (New-Object -TypeName System.IO.FileNotFoundException )
+
+throw (New-Object -TypeName System.IO.FileNotFoundException -ArgumentList "NO se puede encontrar la ruta: [$path]")
+Write-Output "Junaito"
+
+trap
+{
+    Write-Output $PSItem.ToString()
+}
+throw [System.Exception]::new('primero')
+throw [System.Exception]::new('segundo')
+throw [System.Exception]::new('tercero')
+
+function Backup-Registry {
+    Param(
+    [Parameter(Mandatory = $true)]
+    [String]$rutaBackup
+    )
+    
+    if (!(Test-Path -Path $rutaBackup)){
+        New-Item -ItemType Directory -Path $rutaBackup | Out-Null
+    }
+
+    
+    $logDirectory = "$env:C:\Users\Administrador\AppData\RegistryBackup"    
+    $logFIle = Join-Path $logDirectory "backup-registry_log.txt"
+    $logEntry = "$(Get-Date) -$env:USERNAME - Backup - $backupPath"
+    
+    if (!(Test-Path -Path $logDirectory)){
+        New-Item -ItemType Directory -Path $logDirectory | Out-Null
+    }
+
+    Add-Content -Path $logFIle -Value $logEntry
+
+    $nombreArchivo = "Backup-Registry_" + (Get-Date -Format "yyyy-MM-dd_HH-mm-ss")+".reg"
+    $rutaArchivo = Join-Path -Path $rutaBackup -ChildPath $nombreArchivo
+
+
+    $backupCount = 10 
+    $backups = Get-ChildItem $backupDirectory -Filter *.reg | Sort-Object LastWriteTime -Descending
+    if($backups.Count -gt $backupCount) {
+        $backupsToDelete = $backups[$backupCount..($backups.Count -1)]
+        $backupsToDelete | Remove Item -Force
+    }       
+    
+    try{
+        Write-Host "Realizando backup del registro del sistema en  $rutaArchivo...."
+        reg export HKLM $rutaArchivo
+        Write-Host "El backup del registro del sistema se ha realizado con éxito."
+    }
+    catch
+    {
+        Write-Host "Se ha producido un error al intentantar realizar el backup del registro del sistema: $_"
+
+    }
+}
+
+Backup-Registry
