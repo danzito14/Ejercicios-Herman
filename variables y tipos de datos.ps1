@@ -516,3 +516,83 @@ function Backup-Registry {
 }
 
 Backup-Registry
+
+#9 Administracion de PowerShell
+Write-Output "Administracion de PowerShell ----------------------------------------------------------------------"
+Get-Service
+Get-Service -Name Spooler
+Get-Service -DisplayName Hora*
+Get-Service | Where-Object {$_.Status -eq "Running"}
+Get-Service | Where-Object {$_.StartType -eq "Automatic"} | Select-Object Name, StartType
+Get-Service -DependentServices Spooler
+Get-Service -RequiredServices Fax
+Stop-Service -Name Spooler -Confirm -PassThru
+Start-Service -Name Spooler -Confirm -PassThru
+Start-Service -Name StiSvc 
+Suspend-Service -Name StiSvc -Confirm -PassThru
+Suspend-Service -Name Spooler
+Restart-Service -Name StiSvc -Confirm -PassThru
+Set-Service -Name sacsvr -DisplayName "Servicio de sacsvr"
+Set-Service -Name BITS -StartupType Automatic -Confirm -PassThru | Select-Object Name, StartType
+Set-Service -Name BITS -Description "Transferencia de archivos en segundopplano mediante el uso de ancho de banda de red (BITS)"
+Get-CimInstance Win32_Service -Filter 'Name = BITS' | Format-List Name, Description
+Set-Service -Name Spooler -Status Running -Confirm -PassThru
+Set-Service -Name StiSvc -Status Paused -Confirm -PassThru
+Set-Service -Name BITS -Status Stopped -Confirm -PassThru
+
+Get-Process
+Get-Process -Name Acrobat
+Get-Process -Name Search*
+Get-Process -Id 1348
+Get-Process WINWORD -FileVersionInfo
+Get-Process WINWORD -IncludeUserName
+Get-Process WinWORD -Module
+Stop-Process -Name Acrobat -Confirm -PassThru 
+Stop-Process -ID 10940 -Confirm -PassThru 
+Get-Process -Name Acrobat | Stop-Process -Confirm -PassThru
+Start-Process -FilePath "C:\"
+Start-Process -FilePath "C:\Windows\System32\cmd.exe" -ArgumentList "/c mkdir NuevaCarpeta" -WorkingDirectory "C:\" -PassThru
+Start-Process -FilePath "C:\Windows\System32\notepad.exe" -WindowStyle "Maximized" -PassThru
+Start-Process -FilePath "C:\txt.txt" -Verb Print -PassThru
+
+Get-Process -Name notep*
+Wait-Process -Name notepad
+Get-Process -Name notep*
+
+Get-Process -Name notepad
+Wait-Process -Id 11568
+Get-Process -Name notep*
+
+Get-Process -Name notep*
+Get-Process -Name notepad | Wait-Process
+
+Get-LocalUser
+Get-LocalUser -Name Administrador | Select-Object
+
+Get-LocalGroup 
+Get-LocalGroup -Name Administradores
+New-LocalUser -Name "Usuario1" -Description "Usuario de prueba 1" -NoPassword
+
+New-LocalUser -Name "Usuario2" -Description "Usuario de prueba 2" -Password (ConvertTo-SecureString -AsPlainText "12345" -Force)
+Get-LocalUser -Name "Usuario1"
+Remove-LocalUser -Name "Usuario1"
+Get-LocalUser -Name "Usuario1"
+
+Get-LocalUser -Name "Usuario2"
+Get-LocalUser -Name "Usuario2" | Remove-LocalUser
+Get-LocalUser -Name "Usuario2"
+
+New-LocalGroup -Name 'Grupo1' -Description 'Grupo de prueba 1'
+Add-LocalGroupMember -Group Grupo1 -Member Usuario2 -Verbose
+
+Get-LocalGroupMember Grupo1
+
+Remove-LocalGroupMember -Group Grupo1 -Member Usuario1
+Remove-LocalGroupMember -Group Grupo1 -Member Usuario2
+Get-LocalGroupMember Grupo1
+
+Get-LocalGroup -Name "Grupo1"
+Remove-LocalGroup -Name "Grupo1"
+Get-LocalGroup -Name "Grupo1"
+ 
+
