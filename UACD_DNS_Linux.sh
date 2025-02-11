@@ -40,7 +40,7 @@ sudo cp /etc/bind/db.local /etc/bind/zonas/db.reprobados.com
 sudo sed -i 's/localhost. root.localhost./servidor.reprobados.com. root.reprobados.com./' /etc/bind/zonas/db.reprobados.com
 
 # Modificamos el archivo de zona para incluir www.reprobados.com
-sudo sed -i ':a;N;$!ba; s/@\s\+IN\s\+NS\s\+localhost\.\n@\s\+IN\s\+A\s\+127.0.0.1\n@\s\+IN\s\+AAAA\s\+::1/@       IN      NS      servidor.reprobados.com.\nservidor       IN      A       192.168.1.86\nwww            IN      CNAME   servidor.reprobados.com.\nequipo01       IN      A       192.168.1.86\nreprobadosc     IN      CNAME   servidor.reprobados.com./' /etc/bind/zonas/db.reprobados.com
+sudo sed -i ':a;N;$!ba; s/@\s\+IN\s\+NS\s\+localhost\.\n@\s\+IN\s\+A\s\+127.0.0.1\n@\s\+IN\s\+AAAA\s\+::1/@       IN      NS      servidor.reprobados.com.\nservidor       IN      A       192.168.1.86\nwww            IN      CNAME   servidor.reprobados.com.\nreprobados.com.       IN      A       192.168.1.86\nreprobadosc     IN      CNAME   servidor.reprobados.com./' /etc/bind/zonas/db.reprobados.com
 
 # Ahora de la zona inversa
 sudo cp /etc/bind/zonas/db.reprobados.com /etc/bind/zonas/db.1.168.192
