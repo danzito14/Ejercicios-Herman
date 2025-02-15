@@ -6,22 +6,22 @@ Regx="^((25[0-5])|(2[0-4][0-9])|(1[0-9]{2})|([0]?[0-9]?[0-9]))\.((25[0-5])|(2[0-
 # Instalar el servidor DHCP si no está instalado
 sudo apt-get install -y isc-dhcp-server
 
-IP_LOCAL=$(hostname -I | awk '{print $1}')
-echo "Ingrese la IP de rango inicial, que conincida con su IP $IP_LOCAL "
+
+echo "Ingrese la IP de rango inicial, que conincida con su el rango 192.168.1.(1-254) "
 IP_inicial=""
 while [[ ! $IP_inicial =~ $Regx || ! $IP_inicial =~ ^192\.168\.1\.[0-9]+$ ]]; do
     read IP_inicial 
     if [[ ! $IP_inicial =~ $Regx || ! $IP_inicial =~ ^192\.168\.1\.[0-9]+$ ]]; then
-       echo "La IP no tiene el formato correcto o no está en el rango 192.168.1.x, favor de ingresarla correctamente"
+       echo "La IP no tiene el formato correcto o no está en el rango 192.168.1.(1-254), favor de ingresarla correctamente"
     fi
 done
 
-echo "Ingrese la IP de rango final (debe estar en 192.168.1.x)"
+echo "Ingrese la IP de rango final debe estar en 192.168.1.(1-254)"
 IP_final=""
 while [[ ! $IP_final =~ $Regx || ! $IP_final =~ ^192\.168\.1\.[0-9]+$ ]]; do
     read IP_final
     if [[ ! $IP_final =~ $Regx || ! $IP_final =~ ^192\.168\.1\.[0-9]+$ ]]; then
-       echo "La IP no tiene el formato correcto o no está en el rango 192.168.1.x, favor de ingresarla correctamente"
+       echo "La IP no tiene el formato correcto o no está en el rango 192.168.1.(1-254), favor de ingresarla correctamente"
     fi
 done
 
