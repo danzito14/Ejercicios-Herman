@@ -1,14 +1,28 @@
-﻿#Comandos para instalar el servicio y reiniciarlo
+﻿# Solicitar la IP fija del servidor DHCP
+$IPFija = Read-Host "Ingrese la IP fija"
+
+# Obtener la subred automáticamente
+$Subred = $IPFija -replace "\.\d+$", ".0"
+
+# Instalar el servicio DHCP con herramientas de administración
 Install-WindowsFeature -Name DHCP -IncludeManagementTools
 
-Add-DhcpServerInDC -IPAddress 192.168.1.86
-#COmando para añadir un rango, pedira ip inicial, fina, mascara de red etc
-Add-DhcpServerv4Scope
-Get-DchpServerv4ScopeS
+# Registrar el servidor DHCP en el dominio
+Add-DhcpServerInDC -IPAddress $IPFija
 
-#aqui acompleta los datos faltantes
-et-DhcpServerv4optionValue -ScopeId 192.168.1.0 -DnsServer 192.168.1.86
+# Solicitar el rango de IPs para asignar
+$IPInicio = Read-Host "Ingrese la IP de rango inicial"
+$IPFinal = Read-Host "Ingrese la IP de rango final"
 
+# Crear el ámbito DHCP con la IP fija ingresada
+Add-DhcpServerv4Scope -StartRange $IPInicio -EndRange $IPFinal -SubnetMask 255.255.255.0 -State Active
 
-#Para ver las IP que se han dado
+# Configurar opciones del servidor (DNS y puerta de enlace)
+Set-DhcpServerv4OptionValue -ScopeId $Subred -DnsServer $IPFija -Router $IPFija
+
+# Reiniciar el servicio DHCP
+Restart-Service dhcpserver
+
+# Mostrar las IPs asignadas por el servidor
+Write-Host "Mostrando las IPs asignadas por el servidor DHCP:"
 Get-DhcpServerv4Lease
