@@ -16,5 +16,5 @@ Get-NetTCPConnection -State Listen|where {$_.LocalPort -eq '22'}
 
 #agregar una regla al firewall para el ssh
 Enable-NetFirewallRule -name *OpenSSH-Server*
-
+#Ver que si se creo la regla en el firewall
 Get-NetFirewallRule -Group "OpenSSH Server"
