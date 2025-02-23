@@ -60,19 +60,31 @@ function instalar_dns{
 }
 
 function instalar_dhcp {
-    # Mostrar IPs actuales con sus interfaces
-    Write-Host "La IP actual del equipo es:"
-    Get-NetIPAddress -AddressFamily IPv4 | Select-Object InterfaceAlias, IPAddress | Format-Table -AutoSize
+    
+    # Mostrar las IPs actuales con sus interfaces
+    Write-Host "Las IPs actuales del equipo son:"
+    $IPs = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -eq "Manual" -and $_.InterfaceAlias -notlike "*Loopback*" }
+    $IPs | Select-Object InterfaceAlias, IPAddress | Format-Table -AutoSize
 
-    # Obtener la IP actual manualmente configurada
-    $IPActual = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -eq "Manual" -and $_.InterfaceAlias -notlike "*Loopback*" }).IPAddress
-
-    if (-not $IPActual) {
+    # Si no hay IPs manuales configuradas, solicitar al usuario que ingrese una IP
+    if ($IPs.Count -eq 0) {
         Write-Host "No hay IP manual configurada actualmente."
-        $IPActual = Read-Host "Ingrese la IP que desea usar para el servidor DHCP"
+        $IPDeseada = Read-Host "Ingrese la IP que desea usar para el servidor DHCP"
+    } else {
+        # Pedir al usuario seleccionar una IP de la lista
+        $InterfazSeleccionada = Read-Host "Ingrese el nombre de la interfaz que desea usar (por ejemplo, Ethernet)"
+        
+        # Obtener la IP asociada con la interfaz seleccionada
+        $IPDeseada = ($IPs | Where-Object { $_.InterfaceAlias -eq $InterfazSeleccionada }).IPAddress
+
+        if (-not $IPDeseada) {
+            Write-Host "No se encontró una IP asociada con la interfaz seleccionada."
+            return
+        }
+        Write-Host "Se ha seleccionado la IP $IPDeseada para el servidor DHCP."
     }
 
-    # Preguntar si el usuario quiere cambiar la IP
+    # Preguntar si el usuario quiere cambiar la IP del servidor
     $CambiarIP = Read-Host "¿Desea cambiar la IP del servidor? (S/N)"
 
     if ($CambiarIP -match "[Ss]") {
@@ -81,14 +93,14 @@ function instalar_dhcp {
         $IPActual = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -eq "Manual" -and $_.InterfaceAlias -notlike "*Loopback*" }).IPAddress
     }
 
-    # Verificar si $IPActual tiene valor después del posible cambio
-    if (-not $IPActual) {
+    # Verificar si $IPDeseada tiene valor después del posible cambio
+    if (-not $IPDeseada) {
         Write-Host "No se configuró una IP válida. Saliendo del script..."
         return
     }
 
     # Configurar la IP fija del servidor DHCP
-    $IPFija = $IPActual
+    $IPFija = $IPDeseada
     $Subred = $IPFija -replace "\.\d+$", ".0"
 
     # Instalar el servicio DHCP con herramientas de administración
