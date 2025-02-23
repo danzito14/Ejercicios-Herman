@@ -1,17 +1,29 @@
-﻿#Primero instalamos el servicio de DNS
-Install-WindowsFeature -Name DNS -IncludeManagementTools
+﻿function instalar_dns{
+ Write-Host "Instalando el servicio DNS..."
 
-#reiniciamos el servicio
-Restart-Service -Name DNS
+    # Solicitar datos al usuario
+    $dominio = Read-Host "Introduce el nombre del dominio (ejemplo: midominio.com)"
+    $ipServidor = Read-Host "Introduce la IP del servidor DNS"
+    
+    # Instalar el servicio DNS
+    Install-WindowsFeature -Name DNS -IncludeManagementTools
+    
+    # Reiniciar servicio para aplicar cambios
+    Restart-Service -Name DNS
+    
+    # Configurar la zona DNS primaria
+    Add-DnsServerPrimaryZone -Name $dominio -ZoneFile "$dominio.dns"
+    
+    # Agregar registros A en la zona DNS
+    Add-DnsServerResourceRecordA -IPv4Address $ipServidor -Name "www" -ZoneName $dominio
+    Add-DnsServerResourceRecordA -IPv4Address $ipServidor -Name "@" -ZoneName $dominio
 
-#Añadimos al servidor dns nuestro dominio en este caso reprobados.com
-Add-DnsServerPrimaryZone -Name reprobados.com -ZonaFile reprobados.com.dns
+    # Reiniciar servicio DNS después de la configuración
+    Restart-Service -Name DNS
 
-#Luego añadimos un nombre para que se pueda encontrar
-Add-DnsServerResourceRecordA -IPv4Address 192.168.1.86 -Name www -ZonaName reprobados.com
-Add-DnsServerResourceRecordA -IPv4Address 192.168.1.86 -Name "@" -ZoneName reprobados.com
+    # Verificar la configuración
+    Write-Host "Se ha configurado el servidor DNS correctamente."
+    Get-DnsServerZone
+}
 
-Restart-Service -Name DNS
 
-#Aqui vemos que se creo corecctamente
-Get-DnsServerZone
