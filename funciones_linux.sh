@@ -2,86 +2,88 @@
 
 # Función para instalar y configurar el servicio DNS
 configurar_dns() {
+    read -p "Ingrese la IP del servidor DNS: " IP_SERVIDOR
+    read -p "Ingrese el nombre del dominio (ejemplo: midominio.com): " DOMINIO
+    
+    # Obtener la red base eliminando el último octeto
+    RED_BASE=$(echo $IP_SERVIDOR | awk -F '.' '{print $1"."$2"."$3".0"}')
+    
+    # Construir la zona inversa eliminando el último octeto e invirtiendo los demás
+    ZONA_INVERSA=$(echo $RED_BASE | awk -F '.' '{print $3"."$2"."$1}')
+    
+    echo "La IP del servidor es: $IP_SERVIDOR"
+    echo "Zona inversa generada: $ZONA_INVERSA.in-addr.arpa"
+    
     # Instalamos el servicio DNS sin pedir confirmación
     sudo apt install -y bind9 bind9-utils
     sudo ufw allow bind9
-    sudo systemctl status bind9
-
-    # Solicitar la IP para configurar el forwarder
-    echo "Ingrese la IP del servidor DNS al que se va a reenviar la consulta (Ejemplo: 192.168.1.86):"
-    read ip_forwarder
-
-    # Variable que guarda la dirección
-    archivo="/etc/bind/named.conf.options"
-
-    # Ingresamos la configuración
-    sudo sed -i "s/listen-on-v6 { any; };/listen-on { any; };\n    allow-query { localhost; 192.168.1.0\/24; };\n    forwarders {\n $ip_forwarder;\n    };/" /etc/bind/named.conf.options
+    
+    # Configuración en named.conf.options
+    sudo sed -i 's/listen-on-v6 { any; };/listen-on { any; };/g' /etc/bind/named.conf.options
     sudo sed -i 's/dnssec-validation auto;/dnssec-validation no;/' /etc/bind/named.conf.options
-
-    # Configuramos solo para IPv4
     sudo sed -i 's/-u bind"/-u bind -4"/' /etc/default/named
-    sudo named-checkconf
+    
+    # Reiniciar servicio
     sudo systemctl restart bind9
-    sudo systemctl status bind9
-
-    # Ahora agregamos las zonas
+    
+    # Crear carpeta para zonas si no existe
     sudo mkdir -p /etc/bind/zonas
-
-    echo "Ingrese el dominio para la zona directa (Ejemplo: reprobados.com):"
-    read zona_dominio
-    echo "Ingrese la IP asociada al servidor (Ejemplo: 192.168.1.86):"
-    read ip_servidor
-
-    sudo tee -a /etc/bind/named.conf.local > /dev/null <<EOL
-zone "$zona_dominio" IN {
+    
+    # Configurar named.conf.local con el dominio ingresado
+    sudo tee /etc/bind/named.conf.local > /dev/null <<EOL
+zone "$DOMINIO" IN {
     type master;
-    file "/etc/bind/zonas/db.$zona_dominio";
+    file "/etc/bind/zonas/db.$DOMINIO";
 };
 
-zone "1.168.192.in-addr.arpa" IN {
+zone "$ZONA_INVERSA.in-addr.arpa" IN {
     type master;
-    file "/etc/bind/zonas/db.1.168.192";
+    file "/etc/bind/zonas/db.$ZONA_INVERSA";
 };
 EOL
-
-    # Creación del archivo de zona directa
-    sudo cp /etc/bind/db.local /etc/bind/zonas/db.$zona_dominio
-    sudo sed -i "s/localhost. root.localhost./servidor.$zona_dominio. root.$zona_dominio./" /etc/bind/zonas/db.$zona_dominio
-
-    # Modificamos el archivo de zona para incluir www
-    sudo sed -i ":a;N;\$!ba; s/@\s\+IN\s\+NS\s\+localhost\.\n@\s\+IN\s\+A\s\+127.0.0.1\n@\s\+IN\s\+AAAA\s\+::1/@       IN      NS      servidor.$zona_dominio.\nservidor       IN      A       $ip_servidor\nwww            IN      CNAME   servidor.$zona_dominio.\n$zona_dominio.       IN      A       $ip_servidor\n$zona_dominio.c     IN      CNAME   servidor.$zona_dominio./" /etc/bind/zonas/db.$zona_dominio
-
-    # Ahora de la zona inversa
-    sudo cp /etc/bind/zonas/db.$zona_dominio /etc/bind/zonas/db.1.168.192
-
-    # Configuración de la zona inversa
-    sudo tee /etc/bind/zonas/db.1.168.192 > /dev/null <<EOL
+    
+    # Crear archivo de zona directa
+    sudo tee /etc/bind/zonas/db.$DOMINIO > /dev/null <<EOL
 ;
-; BIND data file for reverse lookup zone
+; BIND data file for $DOMINIO
 ;
 \$TTL    604800
-@       IN      SOA     $zona_dominio. admin.$zona_dominio. (
+@       IN      SOA     servidor.$DOMINIO. admin.$DOMINIO. (
                               2         ; Serial
                          604800         ; Refresh
                           86400         ; Retry
                         2419200         ; Expire
                          604800 )       ; Negative Cache TTL
 ;
-        IN      NS      servidor.$zona_dominio.
-86      IN      PTR     servidor.$zona_dominio.
+        IN      NS      servidor.$DOMINIO.
+servidor IN      A       $IP_SERVIDOR
+www      IN      CNAME   servidor.$DOMINIO.
 EOL
-
-    # Comprobamos la configuración
-    sudo named-checkconf /etc/bind/named.conf.local
-    sudo named-checkzone $zona_dominio /etc/bind/zonas/db.$zona_dominio
-    sudo named-checkzone 1.168.192.in-addr.arpa /etc/bind/zonas/db.1.168.192
-
-    # Reiniciamos bind9
+    
+    # Crear archivo de zona inversa
+    sudo tee /etc/bind/zonas/db.$ZONA_INVERSA > /dev/null <<EOL
+;
+; BIND data file for reverse lookup zone
+;
+\$TTL    604800
+@       IN      SOA     $DOMINIO. admin.$DOMINIO. (
+                              2         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+        IN      NS      servidor.$DOMINIO.
+$(echo $IP_SERVIDOR | awk -F '.' '{print $4}')      IN      PTR     servidor.$DOMINIO.
+EOL
+    
+    # Verificar configuración y reiniciar servicio
+    sudo named-checkconf
+    sudo named-checkzone $DOMINIO /etc/bind/zonas/db.$DOMINIO
+    sudo named-checkzone $ZONA_INVERSA.in-addr.arpa /etc/bind/zonas/db.$ZONA_INVERSA
     sudo systemctl restart bind9
-    sudo systemctl status bind9
 }
 
-# Llamar a la función
 
 
 
