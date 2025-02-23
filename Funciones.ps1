@@ -52,6 +52,7 @@ function instalar_dns{
 
     # Reiniciar servicio DNS después de la configuración
     Restart-Service -Name DNS
+    New-NetFirewallRule -DisplayName "Permitir Ping" -Direction Inbound -Protocol ICMPv4 -IcmpType 8 -Action Allow
 
     # Verificar la configuración
     Write-Host "Se ha configurado el servidor DNS correctamente."
