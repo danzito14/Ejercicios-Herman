@@ -60,71 +60,33 @@ function instalar_dns{
 }
 
 function instalar_dhcp {
-    
-    # Mostrar las IPs actuales con sus interfaces
-    Write-Host "Las IPs actuales del equipo son:"
-    $IPs = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -eq "Manual" -and $_.InterfaceAlias -notlike "*Loopback*" }
-    $IPs | Select-Object InterfaceAlias, IPAddress | Format-Table -AutoSize
+ $IPFija = Read-Host "Ingrese la IP fija"
 
-    # Si no hay IPs manuales configuradas, solicitar al usuario que ingrese una IP
-    if ($IPs.Count -eq 0) {
-        Write-Host "No hay IP manual configurada actualmente."
-        $IPDeseada = Read-Host "Ingrese la IP que desea usar para el servidor DHCP"
-    } else {
-        # Pedir al usuario seleccionar una IP de la lista
-        $InterfazSeleccionada = Read-Host "Ingrese el nombre de la interfaz que desea usar (por ejemplo, Ethernet)"
-        
-        # Obtener la IP asociada con la interfaz seleccionada
-        $IPDeseada = ($IPs | Where-Object { $_.InterfaceAlias -eq $InterfazSeleccionada }).IPAddress
+# Obtener la subred automáticamente
+$Subred = $IPFija -replace "\.\d+$", ".0"
 
-        if (-not $IPDeseada) {
-            Write-Host "No se encontró una IP asociada con la interfaz seleccionada."
-            return
-        }
-        Write-Host "Se ha seleccionado la IP $IPDeseada para el servidor DHCP."
-    }
+# Instalar el servicio DHCP con herramientas de administración
+Install-WindowsFeature -Name DHCP -IncludeManagementTools
 
-    # Preguntar si el usuario quiere cambiar la IP del servidor
-    $CambiarIP = Read-Host "¿Desea cambiar la IP del servidor? (S/N)"
+# Registrar el servidor DHCP en el dominio
+Add-DhcpServerInDC -IPAddress $IPFija
 
-    if ($CambiarIP -match "[Ss]") {
-        ip-fija  # Llamar a la función para configurar una IP fija
-        # Actualizar la IP después del cambio
-        $IPActual = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -eq "Manual" -and $_.InterfaceAlias -notlike "*Loopback*" }).IPAddress
-    }
+# Solicitar el rango de IPs para asignar
+$IPInicio = Read-Host "Ingrese la IP de rango inicial"
+$IPFinal = Read-Host "Ingrese la IP de rango final"
 
-    # Verificar si $IPDeseada tiene valor después del posible cambio
-    if (-not $IPDeseada) {
-        Write-Host "No se configuró una IP válida. Saliendo del script..."
-        return
-    }
+# Crear el ámbito DHCP con la IP fija ingresada
+Add-DhcpServerv4Scope -StartRange $IPInicio -EndRange $IPFinal -SubnetMask 255.255.255.0 -State Active
 
-    # Configurar la IP fija del servidor DHCP
-    $IPFija = $IPDeseada
-    $Subred = $IPFija -replace "\.\d+$", ".0"
+# Configurar opciones del servidor (DNS y puerta de enlace)
+Set-DhcpServerv4OptionValue -ScopeId $Subred -DnsServer $IPFija -Router $IPFija
 
-    # Instalar el servicio DHCP con herramientas de administración
-    Install-WindowsFeature -Name DHCP -IncludeManagementTools
+# Reiniciar el servicio DHCP
+Restart-Service dhcpserver
 
-    # Registrar el servidor DHCP en el dominio
-    Add-DhcpServerInDC -IPAddress $IPFija
-
-    # Solicitar el rango de IPs para asignar
-    $IPInicio = Read-Host "Ingrese la IP de rango inicial"
-    $IPFinal = Read-Host "Ingrese la IP de rango final"
-
-    # Crear el ámbito DHCP con la IP fija ingresada
-    Add-DhcpServerv4Scope -StartRange $IPInicio -EndRange $IPFinal -SubnetMask 255.255.255.0 -State Active
-
-    # Configurar opciones del servidor (DNS y puerta de enlace)
-    Set-DhcpServerv4OptionValue -ScopeId $Subred -DnsServer $IPFija -Router $IPFija
-
-    # Reiniciar el servicio DHCP
-    Restart-Service dhcpserver
-
-    # Mostrar las IPs asignadas por el servidor
-    Write-Host "Mostrando las IPs asignadas por el servidor DHCP:"
-    Get-DhcpServerv4Lease
+# Mostrar las IPs asignadas por el servidor
+Write-Host "Mostrando las IPs asignadas por el servidor DHCP:"
+Get-DhcpServerv4Lease
 }
 
 
