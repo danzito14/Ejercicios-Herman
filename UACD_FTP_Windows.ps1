@@ -78,25 +78,40 @@ function crear_usuario () {
     if ($grupos -contains $grupo_seleccionado){
         $FTPUserGroupName = $grupo_seleccionado
 
-       $Group = [ADSI]"WinNT://$env:ComputerName/$FTPUserGroupName,Group"
-       $User = [ADSI]"WinNT://$SID"
-       $Group.Add($User.Path)
+        $Group = [ADSI]"WinNT://$env:ComputerName/$FTPUserGroupName,Group"
+        $User = [ADSI]"WinNT://$env:ComputerName/$FTPUserName"
+        $Group.Add($User.Path)
        mkdir "C:\FTP\$FTPUserName"
        Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.authentication.basicAuthentication.enabled -Value $true
        Add-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessType="Allow";roles="$grupo_seleccionado";permissions=3} -PSPath IIS:\ -location "FTP"
-       Set-ItemProperty "II:\Sites\FTP" -Name ftpServer.security.ssl.controlChannelPolicy -Value 0
-       Set-ItemProperty "II:\Sites\FTP" -Name ftpServer.security.ssl.dataChannelPolicy -Value 0
+        Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.ssl.controlChannelPolicy -Value 1
+
+        # Habilitar SSL para el canal de datos
+        Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.ssl.dataChannelPolicy -Value 1
+
+        Write-Host "FTPS habilitado."
        Restart-WebItem "IIS:\Sites\FTP"
 
        $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch "Loopback" })[0].IPAddress
 
-       Add-DnsServerResourceRecordCName -Name
+        Add-DnsServerResourceRecordCName -Name "ftp" -HostNameAlias "carodiaz.com" -ZoneName "caro.com"
+
         }
  }
 
-function configurar_permisos ($FTPUserName, $grupo_seleccionado) {
+function configurar_permisos {
+    param (
+        [string]$FTPUserName,
+        [string]$grupo_seleccionado
+    )
+
     $usuario = "$env:ComputerName\$FTPUserName"
     $grupo = "$env:ComputerName\$grupo_seleccionado"
+    
+    # Verificar si las carpetas existen
+    if (-not (Test-Path "C:\FTP\$FTPUserName")) {
+        mkdir "C:\FTP\$FTPUserName"
+    }
 
     # Establecer permisos NTFS en la carpeta del usuario
     icacls "C:\FTP\$FTPUserName" /inheritance:r
@@ -110,6 +125,7 @@ function configurar_permisos ($FTPUserName, $grupo_seleccionado) {
 
     Write-Host "Permisos establecidos correctamente."
 }
+
 
 function configurar_reglas_ftp ($FTPUserName, $grupo_seleccionado) {
     $rutaFTP = "IIS:\Sites\FTP"
@@ -128,6 +144,8 @@ function configurar_reglas_ftp ($FTPUserName, $grupo_seleccionado) {
 
     Write-Host "Reglas de autorización FTP configuradas."
 }
+
+
 
 
 
