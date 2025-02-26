@@ -4,13 +4,13 @@
     # Instalar el FTP server incluyendo las caracteristicas del servidor
     Install-WindowsFeature Web-FTP-Server -IncludeAllSubFeature
     #Instalamos la identificacion basica
-    Install-WindowsFeature Web-Bassic-Auth
+    Install-WindowsFeature Web-Basic-Auth
     
 
     #creamos los directiorio para el servidor
     mkdir 'C:\FTP'
     #Por ultimo creamos nuestro servidor
-      New-WebftpSite -Name "FTP" -Port  21 -PhysicalPath "C:\FTP\reprobados"
+      New-WebftpSite -Name "FTP" -Port  21 -PhysicalPath "C:\FTP\"
 
 }
 
@@ -56,6 +56,7 @@ function crear_usuario () {
     $FTPUserName = Read-Host "Ingrese el nombre de usuario"
     $FTPPassword = Read-Host "Ingrese una contraseña"
     #Añadimos y actualizamos las credenciales
+        $ADSI = [ADSI]"WinNT://$env:ComputerName"
     $CreateUserFTPUser = $ADSI.Create("User", "$FTPUserName")
     $CreateUserFTPUser.SetInfo()
     $CreateUSerFTPUser.SetPassword("$FTPPassword")
@@ -67,7 +68,7 @@ function crear_usuario () {
     $SID = $UserAccount.Translate([System.Security.Principal.SecurityIdentifier]) 
 
     #Obtenemos las carpetas de los grupo excluyendo la carpeta public
-    $grupos = Get-ChildItem C:\FTP -Directory | Where-Object { $_.Name -ne "public" } | Select-Object -ExpandProperty Name
+    $grupos = Get-ChildItem C:\FTP -Directory | Where-Object { $_.Name -ne "publica" } | Select-Object -ExpandProperty Name
     #Ahora lo mostramos
     $grupos | Format-Table -AutoSize
     #Ahora pedimos que seleccione un grupo
@@ -89,7 +90,7 @@ function crear_usuario () {
 
        $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch "Loopback" })[0].IPAddress
 
-       Add-DnsServerResourceRecordCName -Name "ftp" -IPAddres $ip -AllowUpdateAny -HostNameAlias servidor.danzito.local
+       Add-DnsServerResourceRecordCName -Name
         }
  }
 
@@ -99,13 +100,13 @@ function configurar_permisos ($FTPUserName, $grupo_seleccionado) {
 
     # Establecer permisos NTFS en la carpeta del usuario
     icacls "C:\FTP\$FTPUserName" /inheritance:r
-    icacls "C:\FTP\$FTPUserName" /grant "$usuario:(OI)(CI)F"
+    icacls "C:\FTP\$FTPUserName" /grant "`"$usuario`":(OI)(CI)F"
 
     # Establecer permisos en la carpeta del grupo
-    icacls "C:\FTP\$grupo_seleccionado" /grant "$usuario:(OI)(CI)R"
+    icacls "C:\FTP\$grupo_seleccionado" /grant "`"$usuario`":(OI)(CI)R"
 
     # Permitir acceso a la carpeta pública
-    icacls "C:\FTP\publica" /grant "$usuario:(OI)(CI)R"
+    icacls "C:\FTP\publica" /grant "`"$usuario`":(OI)(CI)R"
 
     Write-Host "Permisos establecidos correctamente."
 }
