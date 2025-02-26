@@ -91,9 +91,48 @@ function crear_usuario () {
 
        Add-DnsServerResourceRecordCName -Name "ftp" -IPAddres $ip -AllowUpdateAny -HostNameAlias servidor.danzito.local
         }
-        }
+ }
+
+function configurar_permisos ($FTPUserName, $grupo_seleccionado) {
+    $usuario = "$env:ComputerName\$FTPUserName"
+    $grupo = "$env:ComputerName\$grupo_seleccionado"
+
+    # Establecer permisos NTFS en la carpeta del usuario
+    icacls "C:\FTP\$FTPUserName" /inheritance:r
+    icacls "C:\FTP\$FTPUserName" /grant "$usuario:(OI)(CI)F"
+
+    # Establecer permisos en la carpeta del grupo
+    icacls "C:\FTP\$grupo_seleccionado" /grant "$usuario:(OI)(CI)R"
+
+    # Permitir acceso a la carpeta pública
+    icacls "C:\FTP\publica" /grant "$usuario:(OI)(CI)R"
+
+    Write-Host "Permisos establecidos correctamente."
+}
+
+function configurar_reglas_ftp ($FTPUserName, $grupo_seleccionado) {
+    $rutaFTP = "IIS:\Sites\FTP"
+
+    # Habilitar autenticación básica
+    Set-ItemProperty "$rutaFTP" -Name ftpServer.security.authentication.basicAuthentication.enabled -Value $true
+
+    # Permitir acceso a la carpeta del usuario
+    Add-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessType="Allow";users="$FTPUserName";permissions=3} -PSPath IIS:\ -location "FTP"
+
+    # Permitir acceso al grupo del usuario
+    Add-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessType="Allow";roles="$grupo_seleccionado";permissions=1} -PSPath IIS:\ -location "FTP"
+
+    # Permitir acceso a la carpeta pública
+    Add-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessType="Allow";users="*";permissions=1} -PSPath IIS:\ -location "FTP\publica"
+
+    Write-Host "Reglas de autorización FTP configuradas."
+}
+
+
 
 instalar_ftp
 creargrupos_default
 crear_usuario
+configurar_permisos $FTPUserName $grupo_seleccionado
+configurar_reglas_ftp $FTPUserName $grupo_seleccionado
 
