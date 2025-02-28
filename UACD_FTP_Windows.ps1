@@ -11,7 +11,8 @@
     mkdir 'C:\FTP'
     #Por ultimo creamos nuestro servidor
       New-WebftpSite -Name "FTP" -Port  21 -PhysicalPath "C:\FTP\"
-
+    Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.ssl.controlChannelPolicy -Value 0
+|   Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.ssl.dataChannelPolicy -Value 0
 }
 
 function creargrupos_default {
@@ -50,7 +51,8 @@ function creargrupos_default {
     mkdir 'C:\FTP\publica'
     
 }
-
+$FTPUserName = ''
+$grupo_seleccionado = ''
 function crear_usuario () {
     #Solicitamos un usuario y contraseña
     $FTPUserName = Read-Host "Ingrese el nombre de usuario"
@@ -59,8 +61,9 @@ function crear_usuario () {
         $ADSI = [ADSI]"WinNT://$env:ComputerName"
     $CreateUserFTPUser = $ADSI.Create("User", "$FTPUserName")
     $CreateUserFTPUser.SetInfo()
-    $CreateUSerFTPUser.SetPassword("$FTPPassword")
+    $CreateUserFTPUser.SetPassword("$FTPPassword")
     $CreateUserFTPUser.SetInfo()
+
 
     #seleccionamos a que grupo se quiere agregar
     #Para ello creamos un objeto
@@ -84,10 +87,6 @@ function crear_usuario () {
        mkdir "C:\FTP\$FTPUserName"
        Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.authentication.basicAuthentication.enabled -Value $true
        Add-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessType="Allow";roles="$grupo_seleccionado";permissions=3} -PSPath IIS:\ -location "FTP"
-        Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.ssl.controlChannelPolicy -Value 1
-
-        # Habilitar SSL para el canal de datos
-        Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.ssl.dataChannelPolicy -Value 1
 
         Write-Host "FTPS habilitado."
        Restart-WebItem "IIS:\Sites\FTP"
@@ -116,6 +115,7 @@ function configurar_permisos {
     # Establecer permisos NTFS en la carpeta del usuario
     icacls "C:\FTP\$FTPUserName" /inheritance:r
     icacls "C:\FTP\$FTPUserName" /grant "`"$usuario`":(OI)(CI)F"
+
 
     # Establecer permisos en la carpeta del grupo
     icacls "C:\FTP\$grupo_seleccionado" /grant "`"$usuario`":(OI)(CI)R"
@@ -154,4 +154,5 @@ creargrupos_default
 crear_usuario
 configurar_permisos $FTPUserName $grupo_seleccionado
 configurar_reglas_ftp $FTPUserName $grupo_seleccionado
+Restart-WebItem "IIS:\Sites\FTP"
 
