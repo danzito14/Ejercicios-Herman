@@ -12,7 +12,11 @@
     #Por ultimo creamos nuestro servidor
       New-WebftpSite -Name "FTP" -Port  21 -PhysicalPath "C:\FTP\"
     Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.ssl.controlChannelPolicy -Value 0
-|   Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.ssl.dataChannelPolicy -Value 0
+    Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.ssl.dataChannelPolicy -Value 0
+    Add-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessType="Allow";roles="$grupo_seleccionado";permissions=3} -PSPath IIS:\ -location "FTP"
+    Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.authentication.basicAuthentication.enabled -Value $true
+
+    Restart-WebItem "IIS:\Sites\FTP"
 }
 
 function creargrupos_default {
@@ -51,8 +55,8 @@ function creargrupos_default {
     mkdir 'C:\FTP\publica'
     
 }
-$FTPUserName = ''
-$grupo_seleccionado = ''
+$global:FTPUserName = ''
+$global:grupo_seleccionado = ''
 function crear_usuario () {
     #Solicitamos un usuario y contraseña
     $FTPUserName = Read-Host "Ingrese el nombre de usuario"
@@ -85,11 +89,9 @@ function crear_usuario () {
         $User = [ADSI]"WinNT://$env:ComputerName/$FTPUserName"
         $Group.Add($User.Path)
        mkdir "C:\FTP\$FTPUserName"
-       Set-ItemProperty "IIS:\Sites\FTP" -Name ftpServer.security.authentication.basicAuthentication.enabled -Value $true
-       Add-WebConfiguration "/system.ftpServer/security/authorization" -value @{accessType="Allow";roles="$grupo_seleccionado";permissions=3} -PSPath IIS:\ -location "FTP"
 
         Write-Host "FTPS habilitado."
-       Restart-WebItem "IIS:\Sites\FTP"
+
 
        $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch "Loopback" })[0].IPAddress
 
