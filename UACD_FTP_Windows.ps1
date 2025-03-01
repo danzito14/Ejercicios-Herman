@@ -58,47 +58,40 @@ function creargrupos_default {
 $global:FTPUserName = ''
 $global:grupo_seleccionado = ''
 function crear_usuario () {
-    #Solicitamos un usuario y contraseña
-    $FTPUserName = Read-Host "Ingrese el nombre de usuario"
+    # Solicitar usuario y contraseña
+    $global:FTPUserName = Read-Host "Ingrese el nombre de usuario"
     $FTPPassword = Read-Host "Ingrese una contraseña"
-    #Añadimos y actualizamos las credenciales
-        $ADSI = [ADSI]"WinNT://$env:ComputerName"
-    $CreateUserFTPUser = $ADSI.Create("User", "$FTPUserName")
+
+    # Añadir usuario
+    $ADSI = [ADSI]"WinNT://$env:ComputerName"
+    $CreateUserFTPUser = $ADSI.Create("User", "$global:FTPUserName")
     $CreateUserFTPUser.SetInfo()
     $CreateUserFTPUser.SetPassword("$FTPPassword")
     $CreateUserFTPUser.SetInfo()
 
-
-    #seleccionamos a que grupo se quiere agregar
-    #Para ello creamos un objeto
-    $UserAccount = New-Object System.Security.Principal.NTAccount("$FTPUserName")
-    $SID = $UserAccount.Translate([System.Security.Principal.SecurityIdentifier]) 
-
-    #Obtenemos las carpetas de los grupo excluyendo la carpeta public
+    # Obtener grupos disponibles
     $grupos = Get-ChildItem C:\FTP -Directory | Where-Object { $_.Name -ne "publica" } | Select-Object -ExpandProperty Name
-    #Ahora lo mostramos
     $grupos | Format-Table -AutoSize
-    #Ahora pedimos que seleccione un grupo
-    $grupo_seleccionado = Read-Host "Escriba a que grupo quiere pertenecer"
 
-    #Verificamos que si ingreso un nombre valido
-    if ($grupos -contains $grupo_seleccionado){
-        $FTPUserGroupName = $grupo_seleccionado
+    # Solicitar grupo
+    $global:grupo_seleccionado = Read-Host "Escriba a qué grupo quiere pertenecer"
 
+    # Verificar que el grupo existe
+    if ($grupos -contains $global:grupo_seleccionado) {
+        $FTPUserGroupName = $global:grupo_seleccionado
         $Group = [ADSI]"WinNT://$env:ComputerName/$FTPUserGroupName,Group"
-        $User = [ADSI]"WinNT://$env:ComputerName/$FTPUserName"
+        $User = [ADSI]"WinNT://$env:ComputerName/$global:FTPUserName"
         $Group.Add($User.Path)
-       mkdir "C:\FTP\$FTPUserName"
 
+        mkdir "C:\FTP\$global:FTPUserName"
         Write-Host "FTPS habilitado."
 
-
-       $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch "Loopback" })[0].IPAddress
-
+        $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch "Loopback" })[0].IPAddress
         Add-DnsServerResourceRecordCName -Name "ftp" -HostNameAlias "carodiaz.com" -ZoneName "caro.com"
-
-        }
- }
+    } else {
+        Write-Host "Error: Grupo no válido."
+    }
+}
 
 function configurar_permisos {
     param (
@@ -154,6 +147,9 @@ function configurar_reglas_ftp ($FTPUserName, $grupo_seleccionado) {
 instalar_ftp
 creargrupos_default
 crear_usuario
+Write-Host "FTPUserName: '$FTPUserName'"
+Write-Host "Grupo seleccionado: '$grupo_seleccionado'"
+
 configurar_permisos $FTPUserName $grupo_seleccionado
 configurar_reglas_ftp $FTPUserName $grupo_seleccionado
 Restart-WebItem "IIS:\Sites\FTP"
