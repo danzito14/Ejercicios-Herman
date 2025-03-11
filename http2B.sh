@@ -203,7 +203,7 @@ Apache(){
         echo "¿Que versión de Apache quiere instalar?"
         read  opc
         
-        if [[ $opc -ne 1 -or $opc -ne 2 ]]; then
+        if [[ $opc -ne 1 && $opc -ne 2 ]]; then
             echo "Opcion invalida"
         else
             
