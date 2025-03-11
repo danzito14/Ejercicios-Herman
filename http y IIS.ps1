@@ -1,3 +1,20 @@
+
+function validar_puerto {
+    param (
+           [int]$puerto
+            )
+puertos_ocupados = @(20,21,22,23,25,53,67,68,80,110,123,143,161,389,443,445,465,587,993,995,3306,3389,5432,5900,6379)
+
+ if ($puerto -lt 1 -or $puerto -gt 65535){
+    Write-Host "Puerto Invalido"
+    return $false
+ }elfi ($puerto -in $puertos_ocupados){
+ write-host "NO se puede usar puerto reservado"
+ return $false
+ }else{
+    return $true}
+ }
+
 function instalar_apache24 {
 
     do{
@@ -48,7 +65,7 @@ function instalar_apache24 {
                     
                         do {
                         $port = Read-Host 'Seleccione un puerto para instalar el servicio (debe ser un número menor a 500)'
-
+                        if (validar_puerto -puerto [int]$puerto){
                         # Validar si es un número
                         if ($port -match "^\d+$") {
                             $port = [int]$port  # Convertir a entero
@@ -59,7 +76,7 @@ function instalar_apache24 {
                             }
                         } else {
                             Write-Host "Opción inválida: Debe ingresar solo números"
-                        }
+                        }}
                     } while ($true)
 
                     $portInUse = (Test-NetConnection -ComputerName $env:COMPUTERNAME -Port $port -InformationLevel Quiet)
@@ -117,7 +134,7 @@ function instalar_apache24 {
                     
                         do {
                         $port = Read-Host 'Seleccione un puerto para instalar el servicio (debe ser un número menor a 500)'
-
+                                if (validar_puerto -puerto [int]$puerto){
                         # Validar si es un número
                         if ($port -match "^\d+$") {
                             $port = [int]$port  # Convertir a entero
@@ -128,7 +145,7 @@ function instalar_apache24 {
                             }
                         } else {
                             Write-Host "Opción inválida: Debe ingresar solo números"
-                        }
+                        }}
                     } while ($true)
 
                     $portInUse = (Test-NetConnection -ComputerName $env:COMPUTERNAME -Port $port -InformationLevel Quiet)
@@ -209,7 +226,7 @@ function instalar_nginx (){
                     
                     do {
                         $port = Read-Host 'Seleccione un puerto para instalar el servicio (debe ser un número menor a 500)'
-
+                        if (validar_puerto -puerto [int]$puerto){
                         # Validar si es un número
                         if ($port -match "^\d+$") {
                             $port = [int]$port  # Convertir a entero
@@ -220,7 +237,7 @@ function instalar_nginx (){
                             }
                         } else {
                             Write-Host "Opción inválida: Debe ingresar solo números"
-                        }
+                        }}
                     } while ($true)
 
 
@@ -280,7 +297,7 @@ function instalar_nginx (){
                     
                         do {
                         $port = Read-Host 'Seleccione un puerto para instalar el servicio (debe ser un número menor a 500)'
-
+                        if (validar_puerto -puerto [int]$puerto){
                         # Validar si es un número
                         if ($port -match "^\d+$") {
                             $port = [int]$port  # Convertir a entero
@@ -291,7 +308,7 @@ function instalar_nginx (){
                             }
                         } else {
                             Write-Host "Opción inválida: Debe ingresar solo números"
-                        }
+                        }}
                     } while ($true)
 
                     $portInUse = (Test-NetConnection -ComputerName $env:COMPUTERNAME -Port $port -InformationLevel Quiet)
@@ -340,7 +357,7 @@ function instalar_iis () {
                     
                         do {
                         $port = Read-Host 'Seleccione un puerto para instalar el servicio (debe ser un número menor a 500)'
-
+                        if (validar_puerto -puerto [int]$puerto){
                         # Validar si es un número
                         if ($port -match "^\d+$") {
                             $port = [int]$port  # Convertir a entero
@@ -351,7 +368,7 @@ function instalar_iis () {
                             }
                         } else {
                             Write-Host "Opción inválida: Debe ingresar solo números"
-                        }
+                        }}
                     } while ($true)
 
                     $portInUse = (Test-NetConnection -ComputerName $env:COMPUTERNAME -Port $port -InformationLevel Quiet)
@@ -359,7 +376,7 @@ function instalar_iis () {
                     if ($portInUse -eq $true) {
                         Write-Host "Puerto en uso. Seleccione otro"
                     }
-
+                    
                 } while ($portInUse -eq $true)
             Write-Host "Cambiando IIS al puerto $port..."
             Set-WebBinding -Name "Default Web Site" -BindingInformation "*:80:" -PropertyName Port -Value $port
