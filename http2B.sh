@@ -65,125 +65,49 @@ Paquetes(){
 
 }
 
-Puerto(){
-    if sudo ufw status | grep -q "Status: inactive"; then
-        sudo ufw enable > /dev/null
-    fi
-
-    # Solicitar un puerto válido
-    while true; do
-        while true; do
-            read -p "Seleccione un puerto para instalar el servicio (debe ser un número menor a 500): " port
-
-            # Validar si la entrada es un número
-            if [[ $port =~ ^[0-9]+$ ]]; then
-                port=$((port))  # Convertir a entero
-
-                # Validar si está disponible
-                if validar_puerto "$port"; then
-                    if [[ $port -lt 65535 ]]; then
-                        echo -e "\e[32mPuerto válido: $port\e[0m"
-                        break
-                    else
-                        echo -e "\e[31mOpción inválida: El número debe ser menor a 65535.\e[0m"
-                    fi
-                fi
-            else
-                echo -e "\e[31mOpción inválida: Debe ingresar solo números.\e[0m"
-            fi
-        done
-
-        # Verificar si el puerto está en uso
-        if puerto_en_uso "$port"; then
-            echo -e "\e[31mPuerto en uso. Seleccione otro.\e[0m"
-        else
-            break
-        fi
-    done
-
-    echo "El puerto $port está disponible y se puede usar."
-
-}
-
 #!/bin/bash
 
-validar_puerto() {
-    local puerto=$1
-    local puertos_ocupados=(20 21 22 23 25 53 67 68 80 110 123 143 161 
-                            389 443 445 465 587 993 995 3306 3389 5432 
-                            5900 6379)
+Puerto() {
+    local port
+    local puertos_ocupados=(20 21 22 23 25 53 67 68 80 87 110 123 143 161 389 443 445 465 587 993 995 3306 3389 5432 5900 6379)
 
-    # Validar el rango del puerto
-    if [[ $puerto -lt 1 || $puerto -gt 65535 ]]; then
-        echo -e "\e[31mPuerto inválido (debe estar entre 1 y 65535).\e[0m"
-        return 1
-    fi
+    sudo ufw status | grep -q "inactive" && sudo ufw enable > /dev/null
 
-    # Verificar si el puerto está en la lista de reservados
-    for reservado in "${puertos_ocupados[@]}"; do
-        if [[ $puerto -eq $reservado ]]; then
-            echo -e "\e[33mNO se puede usar el puerto $puerto, está reservado.\e[0m"
-            return 1
-        fi
+    while true; do
+        read -p "Ingrese un puerto: " port
+        [[ $port =~ ^[0-9]+$ ]] || continue
+        ((port < 1 || port > 65535)) && continue
+        [[ " ${puertos_ocupados[*]} " =~ " $port " ]] && continue
+        sudo ss -tuln | grep -q ":$port " && continue
+        break
     done
 
-    return 0  # Puerto válido
+    sudo ufw allow $port/tcp > /dev/null
+    echo "$port"
 }
 
-# Función para verificar si un puerto está en uso
-puerto_en_uso() {
-    local puerto=$1
-    if sudo netstat -tuln | grep -q ":$puerto "; then
-        return 0  # Puerto en uso
-    else
-        return 1  # Puerto libre
-    fi
-}
 
 
 InstalarApache(){
-    if [[ -d "/usr/local/apache2" ]]; then
-         while true; do
-            echo "Apache esta en su ultima versión, quiere cambiar el puerto"
-            echo "1. Cambiar puerto" 
-            echo "2. Salir"
-            read opc
-                case $opc in 
-                1)
-                    sudo sed -i -E "s/^Listen [0-9]+/Listen $2/" /usr/local/apache2/conf/httpd.conf
-                    sudo sed -i -E "s|^#?ServerName\s+.*:[0-9]+|ServerName localhost:$2|" /usr/local/apache2/conf/httpd.conf
-                    sudo /usr/local/apache2/bin/apachectl restart
-
-                    echo "Configurando apache"
-                    return 0
-                    ;;
-                2)
-                    return 0
-                    ;;
-                *)
-                    echo "Opcion invalida"
-                    ;;
-            esac
-        done
-
-    else
         echo "Descargando Apache"
-        wget -q "https://downloads.apache.org/httpd/httpd-$1.tar.gz" -O "/tmp/httpd-$1.tar.gz"
+                puerto=$(Puerto)
+        wget -q "https://downloads.apache.org/httpd/httpd-2.4.63.tar.gz" -O "/tmp/httpd-2.4.63.tar.gz"
+
         
         echo "Configurando Apache"
-        tar -xzf "/tmp/httpd-$1.tar.gz" -C /tmp
-        cd "/tmp/httpd-$1" || exit 1
+        tar -xzf "/tmp/httpd-2.4.63.tar.gz" -C /tmp
+        cd "/tmp/httpd-2.4.63" || exit 1
         ./configure --prefix=/usr/local/apache2 --enable-so > /dev/null
-
+        echo "puerto $puerto"
         make > /dev/null
         sudo make install > /dev/null
     
-        sudo sed -i "s/Listen 80/Listen $2/" /usr/local/apache2/conf/httpd.conf
-        sudo sed -i "s/#ServerName www.example.com:80/ServerName localhost:$2/" /usr/local/apache2/conf/httpd.conf
+        sudo sed -i "s/Listen 80/Listen $puerto/" /usr/local/apache2/conf/httpd.conf
+        sudo sed -i "s/#ServerName www.example.com:80/ServerName localhost:$puerto/" /usr/local/apache2/conf/httpd.conf
 
         sudo /usr/local/apache2/bin/apachectl start
-        echo "Apache instalado accede a el desde http://localhost:$2."
-    fi
+        echo "Apache instalado accede a el desde http://localhost:$puerto."
+
     
 }
 
@@ -206,12 +130,9 @@ Apache(){
         if [[ $opc -ne 1 && $opc -ne 2 ]]; then
             echo "Opcion invalida"
         else
-            
-            puerto=$(Puerto)
             echo $puerto
-            InstalarApache ${versions[0]} $puerto
-            return 0
-            
+            InstalarApache ${versions[0]}
+            return 0      
         fi
     done
 
@@ -220,36 +141,12 @@ Apache(){
 InstalarNginx(){
     sudo apt-get install -y libpcre3 libpcre3-dev > /dev/null
 
-    
-    if [[ -d "/usr/local/nginx-$1" ]]; then
-         while true; do
-            echo "Ngnix ya esta en su ultima versión, desea cambiar el puerto"
-            echo "1. Cambiar puerto" 
-            echo "2. Salir"
-            read opc
-                case $opc in 
-                1)
-                    sudo sed -i -E "s|(listen\s+)[0-9]+;|\1$2;|" /usr/local/nginx-$1/conf/nginx.conf
-                    sudo /usr/local/nginx-$1/sbin/nginx -s reload
-                    echo "Reiniciando Nginx con el nuevo puerto"
-                    return 0
-                    ;;
-                2)
-                    echo "Saliendo.."
-                    return 0
-                    ;;
-                *)
-                    echo "Opcion no valida. Vuelva a ingresar una opcion"
-                    ;;
-            esac
-        done
-
-    else
         echo "Descargando Ngnix"
         wget -q "https://nginx.org/download/nginx-$1.tar.gz" -O "/tmp/nginx-$1.tar.gz"
         tar -xzf "/tmp/nginx-$1.tar.gz" -C /tmp
         cd "/tmp/nginx-$1" || exit 1
-
+        puerto=$(Puerto)
+        echo "puerto $2"
         echo "Configurando Ngnix"
         ./configure --prefix=/usr/local/nginx-$1 > /dev/null
         sudo make > /dev/null
@@ -258,7 +155,6 @@ InstalarNginx(){
         sudo /usr/local/nginx-$1/sbin/nginx
 
         echo "NGINX instalado accede a el desde http://localhost:$2."
-    fi
 }
 
 Nginx(){
@@ -328,7 +224,7 @@ InstalarTomcat(){
         
         echo "Descargando tomcat"
         wget -q "$url" -O "/tmp/tomcat-$1.tar.gz"
-
+        echo "puerto $2"
         sudo mkdir -p /opt/tomcat-$1
         echo "Extrayendo tomcat y configurando"
         sudo tar -xzf "/tmp/tomcat-$1.tar.gz" -C /opt/tomcat-$1 --strip-components=1    
@@ -403,6 +299,7 @@ fi
 Paquetes
 
 while true; do
+
     opc=0
     echo "1. Instalar Apache"
     echo "2. Instalar Nginx"
